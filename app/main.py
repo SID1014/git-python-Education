@@ -38,7 +38,7 @@ def main():
             p = hash.hexdigest()
             os.mkdir(f'.git/objects/{p[:2]}')
             with open(f'.git/objects/{p[:2]}/{p[2:]}','x') as m:
-                m.write(zlib.compress(data))
+                m.write(str(zlib.compress(data)))
                 m.close()
             
             
