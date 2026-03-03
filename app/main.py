@@ -18,10 +18,20 @@ def main():
         print("Initialized git directory")
     
     elif command == "cat-file" and sys.argv[2] == '-p':
+        
         filename = sys.argv[3]
+        
         with open(f'.git/objects/{filename[:2]}/{filename[2:]}' , 'rb') as f:
+            #decompress file and remove the header
             blob = zlib.decompress(f.read()).split(b'\x00')[1]
+            #decodes the file so additional characters do not appear in output
             print(blob.decode('utf-8'),end="")
+            
+    elif command == "hash-object" and sys.argv[2] == '-w':
+        filename = sys.argv[3]
+        
+        someObject = zlib.compress()
+        print(someObject)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
