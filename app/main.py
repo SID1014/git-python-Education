@@ -56,8 +56,9 @@ def main():
             tree = zlib.decompress(f.read()).split(b' ')[2:]
             result = ""
             for i in tree:
-            
+                
                 ele = i.split(b'\x00')[0]
+                print(ele)
                 ele = ele.decode('utf-8') + '\n'
                 result += ele
             
