@@ -31,7 +31,7 @@ def main():
         filename = sys.argv[3]
         with open(f"{filename}",'r') as f:
             data = f.read()
-            someObject = zlib.compress()
+            someObject = zlib.compress(data)
             print(someObject)
     else:
         raise RuntimeError(f"Unknown command #{command}")
