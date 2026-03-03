@@ -49,17 +49,19 @@ def main():
             print(p)
             f.close()
     
-    elif command == "ls-tree" and sys.argv[2]:
+    elif command == "ls-tree" and sys.argv[2] == '--name-only':
         filename = sys.argv[3]
         with open(f'.git/objects/{filename[:2]}/{filename[2:]}' , 'rb') as f:
             #decompress file and remove the header
             tree = zlib.decompress(f.read()).split(b' ')[2:]
             result = ""
             for i in tree:
+            
                 ele = i.split(b'\x00')[0]
                 ele = ele.decode('utf-8') + '\n'
                 result += ele
-            print(result)
+            
+            print(result[:-2],end="")
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
