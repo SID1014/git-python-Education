@@ -29,7 +29,7 @@ def main():
             
     elif command == "hash-object" and sys.argv[2] == '-w':
         filename = sys.argv[3]
-        with open(f"{filename}",'r') as f:
+        with open(f"{filename}",'rb') as f:
             data = f.read()
             someObject = zlib.compress(data)
             print(someObject)
