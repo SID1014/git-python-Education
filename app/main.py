@@ -1,7 +1,14 @@
 import sys
 import os
+from patlib import Path
 import zlib
 import hashlib
+
+
+
+def write_tree():
+    print(Path.iterdir())
+
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -52,17 +59,20 @@ def main():
     elif command == "ls-tree" and sys.argv[2] == '--name-only':
         filename = sys.argv[3]
         with open(f'.git/objects/{filename[:2]}/{filename[2:]}' , 'rb') as f:
-            #decompress file and remove the header
+            #decompress file, remove the headers and creates list containg filename followed sha hash
             tree = zlib.decompress(f.read()).split(b' ')[2:]
             result = ""
             for i in tree:
                 
+                #seprates hash
                 ele = i.split(b'\x00')[0]
-                # print(ele)
+                #add new line
                 ele = ele.decode('utf-8') + '\n'
                 result += ele
             
             print(result,end="")
+    elif command == "write-tree":
+        data = write_tree()
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
