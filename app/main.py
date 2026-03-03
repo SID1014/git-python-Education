@@ -58,7 +58,7 @@ def main():
             for i in tree:
                 
                 ele = i.split(b'\x00')[0]
-                print(ele)
+                # print(ele)
                 ele = ele.decode('utf-8') + '\n'
                 result += ele
             
