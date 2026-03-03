@@ -36,7 +36,7 @@ def main():
             hash = hashlib.sha1()
             hash.update(data)
             p = hash.hexdigest()
-            m = open(f'.git/objects/{p[:2]}/{p[2:]}','w')
+            m = open(f'.git/objects/{p[:2]}/{p[2:]}','x')
             m.write(p)
             m.close()
             
