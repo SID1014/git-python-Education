@@ -1,6 +1,7 @@
 import sys
 import os
 import zlib
+import hashlib
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -31,8 +32,10 @@ def main():
         filename = sys.argv[3]
         with open(f"{filename}",'rb') as f:
             data = f.read()
-            someObject = zlib.compress(data)
-            print(someObject)
+            hash = hashlib.sha1()
+            hash.update(data)
+            
+            print(hash.hexdigest())
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
