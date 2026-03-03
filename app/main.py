@@ -50,7 +50,11 @@ def main():
             f.close()
     
     elif command == "ls-tree" and sys.argv[2]:
-        print(sys.argv[3])
+        filename = sys.argv[3]
+        with open(f'.git/objects/{filename[:2]}/{filename[2:]}' , 'rb') as f:
+            #decompress file and remove the header
+            tree = zlib.decompress(f.read()).split(b'\x00')[1]
+            print(tree)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
