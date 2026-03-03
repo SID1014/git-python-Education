@@ -62,7 +62,7 @@ def main():
                 ele = ele.decode('utf-8') + '\n'
                 result += ele
             
-            print(result[:-2],end="")
+            print(result,end="")
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
