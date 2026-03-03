@@ -5,7 +5,7 @@ import zlib
 import hashlib
 
 
-
+#write tree function for recursion in directory and create data to write in file
 def write_tree():
     print(Path.iterdir())
 
