@@ -35,9 +35,12 @@ def main():
             data += bytes(f"blob {len(data)} \x00",encoding = 'utf-8')
             hash = hashlib.sha1()
             hash.update(data)
+            p = hash.hexdigest()
+            m = open('.git/objects/{p[:2]}/{p[2:]}','w')
+            m.write(p)
+            m.close()
             
-            
-            print(hash.hexdigest())
+            print(p)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
