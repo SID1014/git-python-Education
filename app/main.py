@@ -32,7 +32,7 @@ def main():
         filename = sys.argv[3]
         with open(f"{filename}",'rb') as f:
             data = f.read()
-            data += f"blob {len(data)} \x00"
+            data += bytes(f"blob {len(data)} \x00",encodings = 'utf-8')
             hash = hashlib.sha1()
             hash.update(data)
             
