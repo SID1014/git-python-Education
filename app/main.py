@@ -21,7 +21,7 @@ def main():
         filename = sys.argv[3]
         with open(f'.git/objects/{filename[:2]}/{filename[2:]}' , 'rb') as f:
             blob = zlib.decompress(f.read()).split(b'\x00')[1]
-            print(blob)
+            print(blob.decode('utf-8'),end="")
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
