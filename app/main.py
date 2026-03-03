@@ -1,6 +1,6 @@
 import sys
 import os
-from patlib import Path
+from pathlib import Path
 import zlib
 import hashlib
 
