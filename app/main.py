@@ -32,14 +32,15 @@ def main():
         filename = sys.argv[3]
         with open(f"{filename}",'rb') as f:
             data = f.read()
-            data += bytes(f"blob {len(data)} \x00",encoding = 'utf-8')
+            data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
             hash = hashlib.sha1()
             hash.update(data)
             p = hash.hexdigest()
             os.mkdir(f'.git/objects/{p[:2]}')
-            m = open(f'.git/objects/{p[:2]}/{p[2:]}','x')
-            m.write(p)
-            m.close()
+            with open(f'.git/objects/{p[:2]}/{p[2:]}','x') as m:
+                m.write(zlib.compress(data))
+                m.close()
+            
             
             print(p)
     else:
