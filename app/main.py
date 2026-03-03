@@ -8,7 +8,7 @@ import hashlib
 #write tree function for recursion in directory and create data to write in file
 def write_tree():
     for i in Path('.').iterdir():
-        print(i,i.chmod())
+        print(i)
 
 
 def main():
