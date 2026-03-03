@@ -29,9 +29,10 @@ def main():
             
     elif command == "hash-object" and sys.argv[2] == '-w':
         filename = sys.argv[3]
-        
-        someObject = zlib.compress()
-        print(someObject)
+        with open(f"{filename}",'r') as f:
+            data = f.read()
+            someObject = zlib.compress()
+            print(someObject)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
