@@ -27,22 +27,30 @@ def main():
             blob = zlib.decompress(f.read()).split(b'\x00')[1]
             #decodes the file so additional characters do not appear in output
             print(blob.decode('utf-8'),end="")
+            f.close()
             
     elif command == "hash-object" and sys.argv[2] == '-w':
         filename = sys.argv[3]
         with open(f"{filename}",'rb') as f:
             data = f.read()
+            #adds header
             data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
+            #calculate hash
             hash = hashlib.sha1()
             hash.update(data)
+            #hexaganol number of hash
             p = hash.hexdigest()
+            #create directory for storing file
             os.mkdir(f'.git/objects/{p[:2]}')
+            #writes zlib compressed binary data
             with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
                 m.write(zlib.compress(data))
                 m.close()
-            
-            
             print(p)
+            f.close()
+    
+    elif command == "ls-tree" and sys.argv[2]:
+        print(sys.argv[3])
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
