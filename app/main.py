@@ -7,12 +7,13 @@ import hashlib
 
 #write tree function for recursion in directory and create data to write in file
 def write_tree():
-    for i in Path('.').iterdir():
-        if i == '.git':
-            pass
-        else:
-            print(i)
-
+        with os.scandir('.') as elements:
+            for ele in elements:
+                if ele.is_file():
+                    nam ,ext = os.path.splitext(ele.name)
+                    print(nam,"file",ext)
+                else:
+                    print(ele.name , "is dir")
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
