@@ -116,15 +116,21 @@ def tree_creation(results):
     data = bytes(f"tree {size}\x00",encoding = 'utf-8')
     for i in results:
         stage = f"{i[0]} {i[1]}\x00{i[2]}"
-        data += bytes(stage)
+        data += bytes(stage,encoding = 'utf-8')
+        
+        
         hash = hashlib.sha1()
         hash.update(data)
         #hexaganol number of hash
         p = hash.hexdigest()
+        
+        
         #create directory for storing file
         d = f'.git/objects/{p[:2]}'
         if not Path(d).exists():
             os.mkdir(d)
+
+            
         #writes zlib compressed binary data
         with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
             m.write(zlib.compress(data))
