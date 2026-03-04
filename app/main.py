@@ -6,18 +6,7 @@ import hashlib
 
 
 #write tree function for recursion in directory and create data to write in file
-def write_tree(dir='.'):
-        with os.scandir(dir) as elements:
-            elements = sorted(elements)
-            for ele in elements:
-                if ele.is_file():
-                    nam ,ext = os.path.splitext(ele.name)
-                    print(dir , nam,"file",ext)
-                elif ele.name == ".git":
-                    pass
-                else:
-                    print(ele.name , "is dir")
-                    write_tree(f"./{ele.name}")
+
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -47,23 +36,24 @@ def main():
             
     elif command == "hash-object" and sys.argv[2] == '-w':
         filename = sys.argv[3]
-        with open(f"{filename}",'rb') as f:
-            data = f.read()
-            #adds header
-            data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
-            #calculate hash
-            hash = hashlib.sha1()
-            hash.update(data)
-            #hexaganol number of hash
-            p = hash.hexdigest()
-            #create directory for storing file
-            os.mkdir(f'.git/objects/{p[:2]}')
-            #writes zlib compressed binary data
-            with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
-                m.write(zlib.compress(data))
-                m.close()
-            print(p)
-            f.close()
+        print(blob_creation(filename))
+        # with open(f"{filename}",'rb') as f:
+        #     data = f.read()
+        #     #adds header
+        #     data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
+        #     #calculate hash
+        #     hash = hashlib.sha1()
+        #     hash.update(data)
+        #     #hexaganol number of hash
+        #     p = hash.hexdigest()
+        #     #create directory for storing file
+        #     os.mkdir(f'.git/objects/{p[:2]}')
+        #     #writes zlib compressed binary data
+        #     with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
+        #         m.write(zlib.compress(data))
+        #         m.close()
+        #     print(p)
+        #     f.close()
     
     elif command == "ls-tree" and sys.argv[2] == '--name-only':
         filename = sys.argv[3]
@@ -85,6 +75,38 @@ def main():
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
+def blob_creation(filename):
+        with open(f"{filename}",'rb') as f:
+            data = f.read()
+            #adds header
+            data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
+            #calculate hash
+            hash = hashlib.sha1()
+            hash.update(data)
+            #hexaganol number of hash
+            p = hash.hexdigest()
+            #create directory for storing file
+            os.mkdir(f'.git/objects/{p[:2]}')
+            #writes zlib compressed binary data
+            with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
+                m.write(zlib.compress(data))
+                m.close()
+            
+            f.close()
+            return p
+
+def write_tree(dir='.'):
+        result = []
+        with os.scandir(dir) as elements:
+            for ele in elements:
+                if ele.is_file():
+                    nam ,ext = os.path.splitext(ele.name)
+                    result.append([nam ,blob_creation(filename= dir+nam , )])
+                elif ele.name == ".git":
+                    pass
+                else:
+                    print(ele.name , "is dir")
+                    write_tree(f"./{ele.name}")
 
 if __name__ == "__main__":
     main()
