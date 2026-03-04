@@ -14,6 +14,7 @@ def write_tree():
                     print(nam,"file",ext)
                 else:
                     print(ele.name , "is dir")
+                    write_tree(f"./{ele.name}")
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
