@@ -11,7 +11,9 @@ def write_tree(dir='.'):
             for ele in elements:
                 if ele.is_file():
                     nam ,ext = os.path.splitext(ele.name)
-                    print(nam,"file",ext)
+                    print(dir , nam,"file",ext)
+                elif ele.name == ".git":
+                    pass
                 else:
                     print(ele.name , "is dir")
                     write_tree(f"./{ele.name}")
