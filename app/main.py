@@ -102,13 +102,34 @@ def write_tree(dir='.'):
         with os.scandir(dir) as elements:
             for ele in elements:
                 if ele.is_file():
-                    nam ,ext = os.path.splitext(ele.name)
-                    result.append([nam ,blob_creation(filename= dir+'/'+nam , )])
+                    nam  = ele.name
+                    result.append([ '100644' ,nam ,blob_creation(filename= dir+'/'+nam , )])
                 elif ele.name == ".git":
                     pass
                 else:
                     print(ele.name , "is dir")
-                    write_tree(f"./{ele.name}")
+                    result.append(['40000',ele.name,write_tree(f"./{ele.name}")])
+            return tree_creation(result)
+            
+def tree_creation(results):
+    size = len(results)
+    data = bytes(f"tree {size}\x00",encoding = 'utf-8')
+    for i in results:
+        stage = f"{results[0]} {results[1]}\x00{results[3]}"
+        data += bytes(stage)
+        hash = hashlib.sha1()
+        hash.update(data)
+        #hexaganol number of hash
+        p = hash.hexdigest()
+        #create directory for storing file
+        d = f'.git/objects/{p[:2]}'
+        if not Path(d).exists():
+            os.mkdir(d)
+        #writes zlib compressed binary data
+        with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
+            m.write(zlib.compress(data))
+            m.close()
+        return p
 
 if __name__ == "__main__":
     main()
