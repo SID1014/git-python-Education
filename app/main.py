@@ -101,7 +101,7 @@ def write_tree(dir='.'):
             for ele in elements:
                 if ele.is_file():
                     nam ,ext = os.path.splitext(ele.name)
-                    result.append([nam ,blob_creation(filename= dir+nam , )])
+                    result.append([nam ,blob_creation(filename= dir+'/'+nam , )])
                 elif ele.name == ".git":
                     pass
                 else:
