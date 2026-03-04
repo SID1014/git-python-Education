@@ -72,6 +72,7 @@ def main():
             print(result,end="")
     elif command == "write-tree":
         data = write_tree()
+        print(data)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
@@ -107,7 +108,6 @@ def write_tree(dir='.'):
                 elif ele.name == ".git":
                     pass
                 else:
-                    print(ele.name , "is dir")
                     result.append(['40000',ele.name,write_tree(f"./{ele.name}")])
             return tree_creation(result)
             
