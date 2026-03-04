@@ -102,40 +102,42 @@ def write_tree(dir='.'):
         result = []
         with os.scandir(dir) as elements:
             for ele in elements:
-                if ele.is_file():
+                if ele.name == ".git":
+                    continue
+                elif ele.is_file():
                     nam  = ele.name
-                    result.append([ '100644' ,nam ,blob_creation(filename= dir+'/'+nam , )])
-                elif ele.name == ".git":
-                    pass
+                    result.append([ '100644' ,nam ,blob_creation(filename= os.path.join(dir,nam) , )])
                 else:
-                    result.append(['40000',ele.name,write_tree(f"./{ele.name}")])
+                    result.append(['40000',ele.name,write_tree(os.path.join(dir,ele.name))])
+            result.sort(key = lambda x :x[1])
             return tree_creation(result)
             
 def tree_creation(results):
-    size = len(results)
-    data = bytes(f"tree {size}\x00",encoding = 'utf-8')
+    
+    data = b""
     for i in results:
-        stage = f"{i[0]} {i[1]}\x00{i[2]}"
-        data += bytes(stage,encoding = 'utf-8')
+        stage = f"{i[0]} {i[1]}\x00"
+        data += bytes(stage,encoding = 'utf-8') + bytes.fromhex(f"{i[2]}")
+        
+    size = len(data)
+    data = bytes(f"tree {size}\x00",encoding = 'utf-8') + data
+    hash = hashlib.sha1()
+    hash.update(data)
+    #hexaganol number of hash
+    p = hash.hexdigest()
         
         
-        hash = hashlib.sha1()
-        hash.update(data)
-        #hexaganol number of hash
-        p = hash.hexdigest()
-        
-        
-        #create directory for storing file
-        d = f'.git/objects/{p[:2]}'
-        if not Path(d).exists():
-            os.mkdir(d)
+    #create directory for storing file
+    d = f'.git/objects/{p[:2]}'
+    if not Path(d).exists():
+        os.mkdir(d)
 
             
         #writes zlib compressed binary data
-        with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
-            m.write(zlib.compress(data))
-            m.close()
-        return p
+    with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
+        m.write(zlib.compress(data))
+        m.close()
+    return p
 
 if __name__ == "__main__":
     main()
