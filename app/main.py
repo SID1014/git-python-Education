@@ -6,7 +6,7 @@ import hashlib
 
 
 #write tree function for recursion in directory and create data to write in file
-def write_tree():
+def write_tree(dir='.'):
         with os.scandir('.') as elements:
             for ele in elements:
                 if ele.is_file():
