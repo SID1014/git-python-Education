@@ -86,7 +86,9 @@ def blob_creation(filename):
             #hexaganol number of hash
             p = hash.hexdigest()
             #create directory for storing file
-            os.mkdir(f'.git/objects/{p[:2]}')
+            d = f'.git/objects/{p[:2]}'
+            if not Path(d).exists():
+                os.mkdir(d)
             #writes zlib compressed binary data
             with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
                 m.write(zlib.compress(data))
