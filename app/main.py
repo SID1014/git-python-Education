@@ -115,7 +115,7 @@ def tree_creation(results):
     size = len(results)
     data = bytes(f"tree {size}\x00",encoding = 'utf-8')
     for i in results:
-        stage = f"{results[0]} {results[1]}\x00{results[3]}"
+        stage = f"{i[0]} {i[1]}\x00{i[2]}"
         data += bytes(stage)
         hash = hashlib.sha1()
         hash.update(data)
