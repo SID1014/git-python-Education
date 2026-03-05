@@ -3,9 +3,14 @@ import os
 from pathlib import Path
 import zlib
 import hashlib
+import datetime
+import pytz
 
 
 #write tree function for recursion in directory and create data to write in file
+Author = "Sid_is_sleeping"
+email = "siddhantdakhore147@gmail.com"
+
 
 
 def main():
@@ -37,23 +42,6 @@ def main():
     elif command == "hash-object" and sys.argv[2] == '-w':
         filename = sys.argv[3]
         print(blob_creation(filename))
-        # with open(f"{filename}",'rb') as f:
-        #     data = f.read()
-        #     #adds header
-        #     data = bytes(f"blob {len(data)}\x00",encoding = 'utf-8') + data
-        #     #calculate hash
-        #     hash = hashlib.sha1()
-        #     hash.update(data)
-        #     #hexaganol number of hash
-        #     p = hash.hexdigest()
-        #     #create directory for storing file
-        #     os.mkdir(f'.git/objects/{p[:2]}')
-        #     #writes zlib compressed binary data
-        #     with open(f'.git/objects/{p[:2]}/{p[2:]}','xb') as m:
-        #         m.write(zlib.compress(data))
-        #         m.close()
-        #     print(p)
-        #     f.close()
     
     elif command == "ls-tree" and sys.argv[2] == '--name-only':
         filename = sys.argv[3]
@@ -73,6 +61,11 @@ def main():
     elif command == "write-tree":
         data = write_tree()
         print(data)
+    elif command == "commit-tree" and sys.argv[-2] == "-m":
+        mesage = sys.argv[-1]
+        parent_sha = sys.argv[2]
+        commit_sha = sha.argv[4]
+        print(mesage,parent_sha,commit_sha)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
