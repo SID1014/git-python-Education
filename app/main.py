@@ -74,7 +74,7 @@ def main():
         #hexaganol number of hash
         p = hash.hexdigest()
         d = "./.git/objects"
-        with open(f'.git/objects/{p}','x') as m:
+        with open(f'.git/objects/{p}','xb') as m:
                 m.write(zlib.compress(content))
                 m.close()
         print(p)
