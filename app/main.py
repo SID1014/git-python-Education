@@ -87,7 +87,8 @@ def main():
         working_dir = sys.argv[3]
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
         response = repo.read().decode('utf-8')
-        print(parse_pkt_line(response))
+        for i in parse_pkt_line(response):
+            print(i)
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
