@@ -251,11 +251,23 @@ def parse_packfile(data):
             
             # --- 3. Rest of your saving logic ---
             # (Calculate SHA-1, write to .git/objects...)
+            header = f"{obj_type} {len(content)}".encode() + b'\x00'
+            full_object = header + content
+            sha1 = hashlib.sha1(full_object).hexdigest()
             
-    except zlib.error as e:
-        print(f"Failed at offset {offset} (Object {_})")
-        print(f"Bytes at offset: {data[offset:offset+10].hex()}")
-        raise e
+            # Create the directory (first 2 chars of hash)
+            obj_dir = f".git/objects/{sha1[:2]}"
+            os.makedirs(obj_dir, exist_ok=True)
+            
+            # Write the COMPRESSED version to disk (Git style)
+            with open(f"{obj_dir}/{sha1[2:]}", "wb") as f:
+                f.write(zlib.compress(full_object))
+                
+            print(f"Stored {obj_type}: {sha1}")
+        except zlib.error as e:
+            print(f"Failed at offset {offset} (Object {_})")
+            print(f"Bytes at offset: {data[offset:offset+10].hex()}")
+            raise e
 
 if __name__ == "__main__":
     main()
