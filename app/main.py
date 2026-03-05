@@ -99,8 +99,7 @@ def main():
             print(f"Found Ref: {ref_name} -> {sha1}")
             if len(parts) > 1:
                 capabilities = parts[1].decode().split(' ')
-            # print(f"Server Capabilities: {capabilities}")
-        #this is cheating
+        response = clone_negotiation(url,sha1)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
@@ -188,6 +187,26 @@ def tree_creation(results):
         m.write(zlib.compress(data))
         m.close()
     return p
+
+def clone_negotiation(repo_url, sha1):
+    upload_pack_url = f"{repo_url}/git-upload-pack"
+    want_line = f"want {sha1}\n"
+    line_len = len(want_line) + 4
+    pkt_want = f"{line_len:04x}{want_line}".encode('ascii')
+    
+    pkt_flush = b"0000"
+    pkt_done = b"0009done\n"
+    
+    body = pkt_want + pkt_flush + pkt_done
+    req = urllib.request.Request(
+        upload_pack_url, 
+        data=body, 
+        headers={'Content-Type': 'application/x-git-upload-pack-request'}
+    )
+    
+    with urllib.request.urlopen(req) as response:
+        packfile_data = response.read()
+        return packfile_data
 
 if __name__ == "__main__":
     main()
