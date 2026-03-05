@@ -85,8 +85,8 @@ def main():
     elif command == "clone":
         url = sys.argv[2]
         working_dir = sys.argv[3]
-        repo = request.urlopen(url)
-        print(repo.read())
+        repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
+        print(repo.read().decode('utf-8'))
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
