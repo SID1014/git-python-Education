@@ -100,7 +100,8 @@ def main():
             if len(parts) > 1:
                 capabilities = parts[1].decode().split(' ')
         response = clone_negotiation(url,sha1)
-        print(response.read())
+        print(parse_packfile(response))
+        
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
@@ -208,6 +209,53 @@ def clone_negotiation(repo_url, sha1):
     with request.urlopen(req) as response:
         packfile_data = response.read()
         return packfile_data
+
+
+def parse_packfile(data):
+    # Skip '0008NAK\n' (8 bytes) + 'PACK' (4) + Version (4) + Count (4)
+    offset = 20 
+    
+    # Map Git type integers to strings
+    types = {1: "commit", 2: "tree", 3: "blob", 4: "tag"}
+    
+    # We saw in your header that the count is 307 (0x0133)
+    num_objects = 307 
+
+    for _ in range(num_objects):
+        # --- 1. Parse the Variable Length Header ---
+        first_byte = data[offset]
+        obj_type_id = (first_byte & 0b01110000) >> 4
+        obj_type = types.get(obj_type_id, "unknown")
+        
+        # Move past the header bytes (MSB loop)
+        while data[offset] & 0b10000000:
+            offset += 1
+        offset += 1 # Move to the start of the zlib data
+        
+        # --- 2. Decompress the Object ---
+        decompressor = zlib.decompressobj()
+        content = decompressor.decompress(data[offset:])
+        
+        # Update offset to the next object using unused_data
+        offset += len(data[offset:]) - len(decompressor.unused_data)
+        
+        # --- 3. Save to .git/objects ---
+        # Git format: "[type] [size]\x00[content]"
+        header = f"{obj_type} {len(content)}".encode() + b'\x00'
+        full_object = header + content
+        sha1 = hashlib.sha1(full_object).hexdigest()
+        
+        # Create the directory (first 2 chars of hash)
+        obj_dir = f".git/objects/{sha1[:2]}"
+        os.makedirs(obj_dir, exist_ok=True)
+        
+        # Write the COMPRESSED version to disk (Git style)
+        with open(f"{obj_dir}/{sha1[2:]}", "wb") as f:
+            f.write(zlib.compress(full_object))
+            
+        print(f"Stored {obj_type}: {sha1}")
+        
+
 
 if __name__ == "__main__":
     main()
