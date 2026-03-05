@@ -86,23 +86,7 @@ def main():
     elif command == "clone":
         url = sys.argv[2]
         working_dir = sys.argv[3]
-        repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
-        response = repo.read()
-        for line in parse_pkt_line(response):
-            if line is None: continue # Skip flush
-            if b'#' in line: continue # Skip service header
-            
-            parts = line.split(b'\0')
-            ref_info = parts[0].split(b' ')
-            sha1 = ref_info[0].decode()
-            ref_name = ref_info[1].decode()
-            
-            # print(f"Found Ref: {ref_name} -> {sha1}")
-            if len(parts) > 1:
-                capabilities = parts[1].decode().split(' ')
-        response = clone_negotiation(url,sha1)
-        print(parse_packfile(response))
-        
+        clone(url, working_dir)    
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
@@ -143,26 +127,6 @@ def write_tree(dir='.'):
             return tree_creation(result)
 
 
-def parse_pkt_line(data):
-    offset = 0
-    while offset < len(data):
-        # 1. Read the 4-character hex length
-        line_len_hex = data[offset:offset+4].decode('ascii')
-        line_len = int(line_len_hex, 16)
-        
-        # 2. Handle the Flush Packet (0000)
-        if line_len == 0:
-            yield None
-            offset += 4
-            continue
-            
-        # 3. Extract the actual data (excluding the 4 length bytes)
-        line_data = data[offset+4 : offset+line_len]
-        yield line_data
-        
-        # 4. Move to the next packet
-        offset += line_len
-    return offset
                     
 def tree_creation(results):
     
@@ -211,24 +175,111 @@ def clone_negotiation(repo_url, sha1):
         packfile_data = response.read()
         return packfile_data
 
+def clone(url, working_dir):
+    # --- 1. Setup target directory ---
+    os.makedirs(working_dir, exist_ok=True)
+    os.chdir(working_dir)
+    os.makedirs(".git/objects", exist_ok=True)
+    os.makedirs(".git/refs/heads", exist_ok=True)
+    with open(".git/HEAD", "w") as f:
+        f.write("ref: refs/heads/main\n")
+
+    # --- 2. Discover refs ---
+    repo = request.urlopen(url + "/info/refs?service=git-upload-pack")
+    response = repo.read()
+
+    refs = {}
+    head_sha = None
+    for line in parse_pkt_line(response):
+        if line is None: continue
+        if b'#' in line: continue
+
+        parts = line.split(b'\0')
+        ref_info = parts[0].split(b' ')
+        sha = ref_info[0].decode().strip()
+        ref = ref_info[1].decode().strip() if len(ref_info) > 1 else None
+
+        if ref:
+            refs[ref] = sha
+            if ref == "HEAD" or head_sha is None:
+                head_sha = sha
+
+    # --- 3. Fetch packfile ---
+    packfile = clone_negotiation(url, head_sha)
+
+    # --- 4. Parse and store all objects (with delta resolution) ---
+    object_store = parse_packfile(packfile)
+
+    # --- 5. Write branch refs ---
+    for ref, sha in refs.items():
+        if ref.startswith("refs/"):
+            ref_path = f".git/{ref}"
+            os.makedirs(os.path.dirname(ref_path), exist_ok=True)
+            with open(ref_path, "w") as f:
+                f.write(sha + "\n")
+
+    # --- 6. Checkout HEAD into working directory ---
+    checkout(head_sha)
+    print(f"Cloned {url} into {working_dir}")
+
+
+def resolve_delta(base_content, delta_data):
+    """Apply a Git delta to a base object."""
+    idx = 0
+
+    def read_varint():
+        nonlocal idx
+        result, shift = 0, 0
+        while True:
+            byte = delta_data[idx]; idx += 1
+            result |= (byte & 0x7F) << shift
+            shift += 7
+            if not (byte & 0x80): break
+        return result
+
+    base_len = read_varint()
+    result_len = read_varint()
+    result = b""
+
+    while idx < len(delta_data):
+        cmd = delta_data[idx]; idx += 1
+        if cmd & 0x80:  # Copy from base
+            cp_off, cp_size = 0, 0
+            if cmd & 0x01: cp_off   |= delta_data[idx] << 0;  idx += 1
+            if cmd & 0x02: cp_off   |= delta_data[idx] << 8;  idx += 1
+            if cmd & 0x04: cp_off   |= delta_data[idx] << 16; idx += 1
+            if cmd & 0x08: cp_off   |= delta_data[idx] << 24; idx += 1
+            if cmd & 0x10: cp_size  |= delta_data[idx] << 0;  idx += 1
+            if cmd & 0x20: cp_size  |= delta_data[idx] << 8;  idx += 1
+            if cmd & 0x40: cp_size  |= delta_data[idx] << 16; idx += 1
+            if cp_size == 0: cp_size = 0x10000
+            result += base_content[cp_off:cp_off + cp_size]
+        elif cmd:  # Insert literal bytes
+            result += delta_data[idx:idx + cmd]; idx += cmd
+        else:
+            raise ValueError("Unexpected delta command 0x00")
+
+    return result
+
+
 def parse_packfile(data):
-    # Strip HTTP smart protocol prefix '0008NAK\n' if present
     if data[:8] == b'0008NAK\n':
         data = data[8:]
 
-    # Validate PACK magic
     assert data[:4] == b'PACK', "Not a valid packfile"
-
-    version = struct.unpack('>I', data[4:8])[0]
     num_objects = struct.unpack('>I', data[8:12])[0]
-    offset = 12  # Move past the 12-byte PACK header
+    offset = 12
 
     types = {1: "commit", 2: "tree", 3: "blob", 4: "tag"}
-
-    # print(f"PACK version={version}, objects={num_objects}")
+    # Store raw content keyed by sha for delta resolution
+    object_store = {}
+    # Deferred deltas: (type_id, base_sha_or_offset, raw_delta_content)
+    deferred_deltas = []
 
     for i in range(num_objects):
-        # --- 1. Parse variable-length header ---
+        obj_start = offset
+
+        # Parse variable-length header
         first_byte = data[offset]
         obj_type_id = (first_byte & 0x70) >> 4
         size = first_byte & 0x0F
@@ -241,52 +292,113 @@ def parse_packfile(data):
             shift += 7
             offset += 1
 
-        # --- 2. Handle delta types ---
-        if obj_type_id == 7:  # REF_DELTA: skip 20-byte base object SHA
+        base_sha = None
+        base_offset = None
+
+        if obj_type_id == 7:  # REF_DELTA
             base_sha = data[offset:offset + 20].hex()
             offset += 20
-            # print(f"  REF_DELTA base sha: {base_sha} (skipping delta resolution)")
-
-        elif obj_type_id == 6:  # OFS_DELTA: skip variable-length negative offset
+        elif obj_type_id == 6:  # OFS_DELTA
+            raw = 0
             while data[offset] & 0x80:
+                raw = (raw << 7) | (data[offset] & 0x7F)
                 offset += 1
+            raw = (raw << 7) | data[offset]
             offset += 1
-            # print(f"  OFS_DELTA (skipping delta resolution)")
+            base_offset = obj_start - raw
 
-        obj_type = types.get(obj_type_id, "unknown")
+        # Decompress
+        decompressor = zlib.decompressobj()
+        content = decompressor.decompress(data[offset:])
+        offset += len(data[offset:]) - len(decompressor.unused_data)
 
-        # --- 3. Decompress zlib data ---
-        try:
-            decompressor = zlib.decompressobj()
-            content = decompressor.decompress(data[offset:])
-            consumed = len(data[offset:]) - len(decompressor.unused_data)
-            offset += consumed
-
-        except zlib.error as e:
-            # print(f"[!] zlib failed at offset {offset} (object {i}, type={obj_type_id})")
-            # print(f"    Bytes: {data[offset:offset+10].hex()}")
-            raise e
-
-        # --- 4. Skip delta objects (can't store without base resolution) ---
         if obj_type_id in (6, 7):
-            # print(f"  Skipping delta object storage (requires base resolution)")
+            deferred_deltas.append((obj_type_id, base_sha or base_offset, content, obj_start))
             continue
 
-        # --- 5. Compute SHA-1 and write to .git/objects ---
-        header = f"{obj_type} {len(content)}".encode() + b'\x00'
-        full_object = header + content
-        sha1 = hashlib.sha1(full_object).hexdigest()
+        # Store and write base objects
+        obj_type = types[obj_type_id]
+        _store_object(obj_type, content, object_store)
 
-        obj_dir = f".git/objects/{sha1[:2]}"
-        os.makedirs(obj_dir, exist_ok=True)
+    # --- Resolve deltas ---
+    # Retry loop handles deltas whose base is itself a delta
+    max_passes = 10
+    for _ in range(max_passes):
+        if not deferred_deltas: break
+        unresolved = []
+        for type_id, base_ref, delta_content, obj_start in deferred_deltas:
+            if type_id == 7:
+                base = object_store.get(base_ref)
+            else:
+                base = object_store.get(f"@{base_ref}")  # offset-keyed
 
-        obj_path = f"{obj_dir}/{sha1[2:]}"
-        if not os.path.exists(obj_path):
-            with open(obj_path, "wb") as f:
-                f.write(zlib.compress(full_object))
+            if base is None:
+                unresolved.append((type_id, base_ref, delta_content, obj_start))
+                continue
 
-        # print(f"[{i+1}/{num_objects}] Stored {obj_type}: {sha1}")
-        
+            base_type, base_content = base
+            result = resolve_delta(base_content, delta_content)
+            _store_object(base_type, result, object_store)
+
+        deferred_deltas = unresolved
+
+    if deferred_deltas:
+        print(f"Warning: {len(deferred_deltas)} delta(s) could not be resolved")
+
+    return object_store
+
+
+def _store_object(obj_type, content, object_store):
+    header = f"{obj_type} {len(content)}".encode() + b'\x00'
+    full_object = header + content
+    sha1 = hashlib.sha1(full_object).hexdigest()
+
+    obj_dir = f".git/objects/{sha1[:2]}"
+    os.makedirs(obj_dir, exist_ok=True)
+    obj_path = f"{obj_dir}/{sha1[2:]}"
+    if not os.path.exists(obj_path):
+        with open(obj_path, "wb") as f:
+            f.write(zlib.compress(full_object))
+
+    object_store[sha1] = (obj_type, content)
+    return sha1
+
+
+def checkout(commit_sha, base_dir='.'):
+    """Recursively checkout a commit's tree into the working directory."""
+    # Read commit to get tree sha
+    commit_type, commit_content = read_object(commit_sha)
+    tree_sha = commit_content.split(b'\n')[0].split(b' ')[1].decode()
+    checkout_tree(tree_sha, base_dir)
+
+
+def checkout_tree(tree_sha, base_dir):
+    _, tree_content = read_object(tree_sha)
+    idx = 0
+    while idx < len(tree_content):
+        # Parse "mode name\0<20-byte-sha>"
+        null = tree_content.index(b'\x00', idx)
+        mode, name = tree_content[idx:null].decode().split(' ', 1)
+        sha = tree_content[null + 1:null + 21].hex()
+        idx = null + 21
+
+        path = os.path.join(base_dir, name)
+        if mode == '40000':  # directory
+            os.makedirs(path, exist_ok=True)
+            checkout_tree(sha, path)
+        else:  # file
+            _, file_content = read_object(sha)
+            with open(path, 'wb') as f:
+                f.write(file_content)
+
+
+def read_object(sha):
+    path = f".git/objects/{sha[:2]}/{sha[2:]}"
+    with open(path, 'rb') as f:
+        raw = zlib.decompress(f.read())
+    header, content = raw.split(b'\x00', 1)
+    obj_type = header.split(b' ')[0].decode()
+    return obj_type, content        
         
         
 if __name__ == "__main__":
