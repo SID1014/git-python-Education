@@ -4,6 +4,7 @@ from pathlib import Path
 import zlib
 import hashlib
 from datetime import datetime,timezone
+import git
 
 
 
@@ -81,7 +82,11 @@ def main():
             m.write(zlib.compress(content))
             m.close()
         print(p)
-        
+    elif command == "clone":
+        url = sys.argv[2]
+        working_dir = sys.argv[3]
+        repo = git.Repo.clone_from(url, os.path.join('.', working_dir))
+           
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
