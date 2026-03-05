@@ -87,7 +87,7 @@ def main():
         working_dir = sys.argv[3]
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
         response = repo.read()
-        for i in parse_pkt_line(response):
+        for line in parse_pkt_line(response):
             if line is None: continue # Skip flush
             if b'#' in line: continue # Skip service header
             
