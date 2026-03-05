@@ -96,10 +96,11 @@ def main():
             sha1 = ref_info[0].decode()
             ref_name = ref_info[1].decode()
             
-            print(f"Found Ref: {ref_name} -> {sha1}")
+            # print(f"Found Ref: {ref_name} -> {sha1}")
             if len(parts) > 1:
                 capabilities = parts[1].decode().split(' ')
         response = clone_negotiation(url,sha1)
+        print(response)
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
