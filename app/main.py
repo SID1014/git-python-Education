@@ -204,7 +204,7 @@ def clone_negotiation(repo_url, sha1):
         headers={'Content-Type': 'application/x-git-upload-pack-request'}
     )
     
-    with urllib.request.urlopen(req) as response:
+    with request.urlopen(req) as response:
         packfile_data = response.read()
         return packfile_data
 
