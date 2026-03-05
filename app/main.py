@@ -3,15 +3,16 @@ import os
 from pathlib import Path
 import zlib
 import hashlib
-import datetime
+from datetime import datetime,timezone
 
 
 
 #write tree function for recursion in directory and create data to write in file
 Author = "Sid_is_sleeping"
 email = "siddhantdakhore147@gmail.com"
-
-
+now = datetime.now(timezone.utc).astimezone()
+timestamp = int(now.timestamp())
+timezone = now.strftime('%z')
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -63,9 +64,20 @@ def main():
         print(data)
     elif command == "commit-tree" and sys.argv[-2] == "-m":
         mesage = sys.argv[-1]
-        parent_sha = sys.argv[2]
-        commit_sha = sys.argv[4]
-        print(mesage,parent_sha,commit_sha)
+        parent_sha = sys.argv[4]
+        commit_sha = sys.argv[2]
+        content = f"tree {commit_sha}\nparent {parent_sha}\nauthor {Author} <{email}> {timestamp} {timezone}\ncommiter {Author} <{email}> {timestamp} {timezone}\n\n{mesage}"
+        print(content)
+        hash = hashlib.sha1()
+        hash.update(content)
+        #hexaganol number of hash
+        p = hash.hexdigest()
+        d = "./.git/objects"
+        with open(f'.git/objects/{p}','x') as m:
+                m.write(zlib.compress(content))
+                m.close()
+        print(p)
+        
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
