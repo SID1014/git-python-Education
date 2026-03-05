@@ -100,7 +100,7 @@ def main():
             if len(parts) > 1:
                 capabilities = parts[1].decode().split(' ')
         response = clone_negotiation(url,sha1)
-        print(response)
+        print(response.read())
     else:
         raise RuntimeError(f"Unknown command #{command}")
 
