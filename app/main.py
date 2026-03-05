@@ -5,6 +5,7 @@ import zlib
 import hashlib
 from datetime import datetime,timezone
 from urllib import request
+from bs4 import BeautifulSoup
 
 
 
@@ -86,7 +87,11 @@ def main():
         url = sys.argv[2]
         working_dir = sys.argv[3]
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
-        print(repo.read().decode('utf-8'))
+        response = repo.read().decode('utf-8')
+        soup = BeautifulSoup(html_content, 'html.parser')
+        print(soup.title.string) 
+        description = soup.find("meta", {"name": "description"})["content"]
+        print(description)
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
@@ -126,7 +131,29 @@ def write_tree(dir='.'):
                     result.append(['40000',ele.name,write_tree(os.path.join(dir,ele.name))])
             result.sort(key = lambda x :x[1])
             return tree_creation(result)
+
+
+def parse_pkt_line(data):
+    offset = 0
+    while offset < len(data):
+        # 1. Read the 4-character hex length
+        line_len_hex = data[offset:offset+4].decode('ascii')
+        line_len = int(line_len_hex, 16)
+        
+        # 2. Handle the Flush Packet (0000)
+        if line_len == 0:
+            yield None
+            offset += 4
+            continue
             
+        # 3. Extract the actual data (excluding the 4 length bytes)
+        line_data = data[offset+4 : offset+line_len]
+        yield line_data
+        
+        # 4. Move to the next packet
+        offset += line_len
+    return offset
+                    
 def tree_creation(results):
     
     data = b""
