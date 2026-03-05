@@ -222,40 +222,40 @@ def parse_packfile(data):
     num_objects = 307 
 
     for _ in range(num_objects):
-        # --- 1. Parse the Variable Length Header ---
+        # --- 1. Robust Header Parsing ---
+        # We need to find where the header ends and the data starts
+        header_start = offset
+        
+        # The first byte contains the type
         first_byte = data[offset]
         obj_type_id = (first_byte & 0b01110000) >> 4
         obj_type = types.get(obj_type_id, "unknown")
         
-        # Move past the header bytes (MSB loop)
+        # Shift through the variable-length size bytes
+        # If the 8th bit (0x80) is 1, the size/header continues
         while data[offset] & 0b10000000:
             offset += 1
-        offset += 1 # Move to the start of the zlib data
         
-        # --- 2. Decompress the Object ---
-        decompressor = zlib.decompressobj()
-        content = decompressor.decompress(data[offset:])
+        # We are now at the last byte of the header. 
+        # The NEXT byte is the start of the zlib data.
+        offset += 1 
         
-        # Update offset to the next object using unused_data
-        offset += len(data[offset:]) - len(decompressor.unused_data)
-        
-        # --- 3. Save to .git/objects ---
-        # Git format: "[type] [size]\x00[content]"
-        header = f"{obj_type} {len(content)}".encode() + b'\x00'
-        full_object = header + content
-        sha1 = hashlib.sha1(full_object).hexdigest()
-        
-        # Create the directory (first 2 chars of hash)
-        obj_dir = f".git/objects/{sha1[:2]}"
-        os.makedirs(obj_dir, exist_ok=True)
-        
-        # Write the COMPRESSED version to disk (Git style)
-        with open(f"{obj_dir}/{sha1[2:]}", "wb") as f:
-            f.write(zlib.compress(full_object))
+        # --- 2. Decompression ---
+        try:
+            decompressor = zlib.decompressobj()
+            content = decompressor.decompress(data[offset:])
             
-        print(f"Stored {obj_type}: {sha1}")
-        
-
+            # Update offset: move it to the end of the data just consumed
+            consumed_length = len(data[offset:]) - len(decompressor.unused_data)
+            offset += consumed_length
+            
+            # --- 3. Rest of your saving logic ---
+            # (Calculate SHA-1, write to .git/objects...)
+            
+    except zlib.error as e:
+        print(f"Failed at offset {offset} (Object {_})")
+        print(f"Bytes at offset: {data[offset:offset+10].hex()}")
+        raise e
 
 if __name__ == "__main__":
     main()
