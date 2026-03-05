@@ -4,7 +4,7 @@ from pathlib import Path
 import zlib
 import hashlib
 from datetime import datetime,timezone
-import urllib
+from urllib import request
 
 
 
@@ -85,7 +85,7 @@ def main():
     elif command == "clone":
         url = sys.argv[2]
         working_dir = sys.argv[3]
-        repo = urllib.request.urlopen(url)
+        repo = request.urlopen(url)
         print(repo)
         #this is cheating
     else:
