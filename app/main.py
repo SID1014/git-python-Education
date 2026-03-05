@@ -198,7 +198,7 @@ def clone_negotiation(repo_url, sha1):
     pkt_done = b"0009done\n"
     
     body = pkt_want + pkt_flush + pkt_done
-    req = urllib.request.Request(
+    req = request.Request(
         upload_pack_url, 
         data=body, 
         headers={'Content-Type': 'application/x-git-upload-pack-request'}
