@@ -68,7 +68,7 @@ def main():
         commit_sha = sys.argv[2]
         content = f"tree {commit_sha}\nparent {parent_sha}\nauthor {Author} <{email}> {timestamp} {timezone}\ncommiter {Author} <{email}> {timestamp} {timezone}\n\n{mesage}"
         content = f"commit {len(content)} 0\{content}".encode('utf-8')
-        print(content)
+        # print(content)
         hash = hashlib.sha1()
         hash.update(content)
         #hexaganol number of hash
