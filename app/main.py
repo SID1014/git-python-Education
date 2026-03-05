@@ -4,7 +4,7 @@ from pathlib import Path
 import zlib
 import hashlib
 from datetime import datetime,timezone
-import git
+from dulwich import porcelain
 
 
 
@@ -85,7 +85,7 @@ def main():
     elif command == "clone":
         url = sys.argv[2]
         working_dir = sys.argv[3]
-        repo = git.Repo.clone_from(url, os.path.join('.', working_dir))
+        repo = porcelain.clone(url, os.path.join('.', working_dir))
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
