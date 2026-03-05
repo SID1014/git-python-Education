@@ -5,7 +5,6 @@ import zlib
 import hashlib
 from datetime import datetime,timezone
 from urllib import request
-from bs4 import BeautifulSoup
 
 
 
@@ -88,10 +87,7 @@ def main():
         working_dir = sys.argv[3]
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
         response = repo.read().decode('utf-8')
-        soup = BeautifulSoup(html_content, 'html.parser')
-        print(soup.title.string) 
-        description = soup.find("meta", {"name": "description"})["content"]
-        print(description)
+        print(parse_pkt_line(response))
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
