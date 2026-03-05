@@ -225,7 +225,7 @@ def parse_packfile(data):
 
     types = {1: "commit", 2: "tree", 3: "blob", 4: "tag"}
 
-    print(f"PACK version={version}, objects={num_objects}")
+    # print(f"PACK version={version}, objects={num_objects}")
 
     for i in range(num_objects):
         # --- 1. Parse variable-length header ---
@@ -245,13 +245,13 @@ def parse_packfile(data):
         if obj_type_id == 7:  # REF_DELTA: skip 20-byte base object SHA
             base_sha = data[offset:offset + 20].hex()
             offset += 20
-            print(f"  REF_DELTA base sha: {base_sha} (skipping delta resolution)")
+            # print(f"  REF_DELTA base sha: {base_sha} (skipping delta resolution)")
 
         elif obj_type_id == 6:  # OFS_DELTA: skip variable-length negative offset
             while data[offset] & 0x80:
                 offset += 1
             offset += 1
-            print(f"  OFS_DELTA (skipping delta resolution)")
+            # print(f"  OFS_DELTA (skipping delta resolution)")
 
         obj_type = types.get(obj_type_id, "unknown")
 
@@ -263,13 +263,13 @@ def parse_packfile(data):
             offset += consumed
 
         except zlib.error as e:
-            print(f"[!] zlib failed at offset {offset} (object {i}, type={obj_type_id})")
-            print(f"    Bytes: {data[offset:offset+10].hex()}")
+            # print(f"[!] zlib failed at offset {offset} (object {i}, type={obj_type_id})")
+            # print(f"    Bytes: {data[offset:offset+10].hex()}")
             raise e
 
         # --- 4. Skip delta objects (can't store without base resolution) ---
         if obj_type_id in (6, 7):
-            print(f"  Skipping delta object storage (requires base resolution)")
+            # print(f"  Skipping delta object storage (requires base resolution)")
             continue
 
         # --- 5. Compute SHA-1 and write to .git/objects ---
