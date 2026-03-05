@@ -64,7 +64,7 @@ def main():
     elif command == "commit-tree" and sys.argv[-2] == "-m":
         mesage = sys.argv[-1]
         parent_sha = sys.argv[2]
-        commit_sha = sha.argv[4]
+        commit_sha = sys.argv[4]
         print(mesage,parent_sha,commit_sha)
     else:
         raise RuntimeError(f"Unknown command #{command}")
