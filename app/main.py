@@ -4,7 +4,7 @@ from pathlib import Path
 import zlib
 import hashlib
 import datetime
-import pytz
+
 
 
 #write tree function for recursion in directory and create data to write in file
