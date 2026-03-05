@@ -88,7 +88,18 @@ def main():
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
         response = repo.read()
         for i in parse_pkt_line(response):
-            print(i)
+            if line is None: continue # Skip flush
+            if b'#' in line: continue # Skip service header
+            
+            parts = line.split(b'\0')
+            ref_info = parts[0].split(b' ')
+            sha1 = ref_info[0].decode()
+            ref_name = ref_info[1].decode()
+            
+            print(f"Found Ref: {ref_name} -> {sha1}")
+            if len(parts) > 1:
+                capabilities = parts[1].decode().split(' ')
+            print(f"Server Capabilities: {capabilities}")
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
