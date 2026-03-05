@@ -99,7 +99,7 @@ def main():
             print(f"Found Ref: {ref_name} -> {sha1}")
             if len(parts) > 1:
                 capabilities = parts[1].decode().split(' ')
-            print(f"Server Capabilities: {capabilities}")
+            # print(f"Server Capabilities: {capabilities}")
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
