@@ -4,7 +4,7 @@ from pathlib import Path
 import zlib
 import hashlib
 from datetime import datetime,timezone
-from dulwich import porcelain
+import urllib
 
 
 
@@ -85,7 +85,8 @@ def main():
     elif command == "clone":
         url = sys.argv[2]
         working_dir = sys.argv[3]
-        repo = porcelain.clone(url, os.path.join('.', working_dir))
+        repo = urllib.request.urlopen(url)
+        print(repo)
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
