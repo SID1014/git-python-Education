@@ -86,7 +86,7 @@ def main():
         url = sys.argv[2]
         working_dir = sys.argv[3]
         repo = request.urlopen(url+"/info/refs?service=git-upload-pack")
-        response = repo.read().decode('utf-8')
+        response = repo.read()
         for i in parse_pkt_line(response):
             print(i)
         #this is cheating
