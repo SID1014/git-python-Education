@@ -5,6 +5,7 @@ import zlib
 import hashlib
 from datetime import datetime,timezone
 from urllib import request
+import struct
 
 
 
@@ -210,64 +211,83 @@ def clone_negotiation(repo_url, sha1):
         packfile_data = response.read()
         return packfile_data
 
-
 def parse_packfile(data):
-    # Skip '0008NAK\n' (8 bytes) + 'PACK' (4) + Version (4) + Count (4)
-    offset = 20 
-    
-    # Map Git type integers to strings
-    types = {1: "commit", 2: "tree", 3: "blob", 4: "tag"}
-    
-    # We saw in your header that the count is 307 (0x0133)
-    num_objects = 307 
+    # Strip HTTP smart protocol prefix '0008NAK\n' if present
+    if data[:8] == b'0008NAK\n':
+        data = data[8:]
 
-    for _ in range(num_objects):
-        # --- 1. Robust Header Parsing ---
-        # We need to find where the header ends and the data starts
-        header_start = offset
-        
-        # The first byte contains the type
+    # Validate PACK magic
+    assert data[:4] == b'PACK', "Not a valid packfile"
+
+    version = struct.unpack('>I', data[4:8])[0]
+    num_objects = struct.unpack('>I', data[8:12])[0]
+    offset = 12  # Move past the 12-byte PACK header
+
+    types = {1: "commit", 2: "tree", 3: "blob", 4: "tag"}
+
+    print(f"PACK version={version}, objects={num_objects}")
+
+    for i in range(num_objects):
+        # --- 1. Parse variable-length header ---
         first_byte = data[offset]
-        obj_type_id = (first_byte & 0b01110000) >> 4
-        obj_type = types.get(obj_type_id, "unknown")
-        
-        # Shift through the variable-length size bytes
-        # If the 8th bit (0x80) is 1, the size/header continues
-        while data[offset] & 0b10000000:
+        obj_type_id = (first_byte & 0x70) >> 4
+        size = first_byte & 0x0F
+        shift = 4
+        offset += 1
+
+        while data[offset - 1] & 0x80:
+            byte = data[offset]
+            size |= (byte & 0x7F) << shift
+            shift += 7
             offset += 1
-        
-        # We are now at the last byte of the header. 
-        # The NEXT byte is the start of the zlib data.
-        offset += 1 
-        
-        # --- 2. Decompression ---
+
+        # --- 2. Handle delta types ---
+        if obj_type_id == 7:  # REF_DELTA: skip 20-byte base object SHA
+            base_sha = data[offset:offset + 20].hex()
+            offset += 20
+            print(f"  REF_DELTA base sha: {base_sha} (skipping delta resolution)")
+
+        elif obj_type_id == 6:  # OFS_DELTA: skip variable-length negative offset
+            while data[offset] & 0x80:
+                offset += 1
+            offset += 1
+            print(f"  OFS_DELTA (skipping delta resolution)")
+
+        obj_type = types.get(obj_type_id, "unknown")
+
+        # --- 3. Decompress zlib data ---
         try:
             decompressor = zlib.decompressobj()
             content = decompressor.decompress(data[offset:])
-            
-            # Update offset: move it to the end of the data just consumed
-            consumed_length = len(data[offset:]) - len(decompressor.unused_data)
-            offset += consumed_length
-            
-            # --- 3. Rest of your saving logic ---
-            # (Calculate SHA-1, write to .git/objects...)
-            header = f"{obj_type} {len(content)}".encode() + b'\x00'
-            full_object = header + content
-            sha1 = hashlib.sha1(full_object).hexdigest()
-            
-            # Create the directory (first 2 chars of hash)
-            obj_dir = f".git/objects/{sha1[:2]}"
-            os.makedirs(obj_dir, exist_ok=True)
-            
-            # Write the COMPRESSED version to disk (Git style)
-            with open(f"{obj_dir}/{sha1[2:]}", "wb") as f:
-                f.write(zlib.compress(full_object))
-                
-            print(f"Stored {obj_type}: {sha1}")
+            consumed = len(data[offset:]) - len(decompressor.unused_data)
+            offset += consumed
+
         except zlib.error as e:
-            print(f"Failed at offset {offset} (Object {_})")
-            print(f"Bytes at offset: {data[offset:offset+10].hex()}")
+            print(f"[!] zlib failed at offset {offset} (object {i}, type={obj_type_id})")
+            print(f"    Bytes: {data[offset:offset+10].hex()}")
             raise e
 
+        # --- 4. Skip delta objects (can't store without base resolution) ---
+        if obj_type_id in (6, 7):
+            print(f"  Skipping delta object storage (requires base resolution)")
+            continue
+
+        # --- 5. Compute SHA-1 and write to .git/objects ---
+        header = f"{obj_type} {len(content)}".encode() + b'\x00'
+        full_object = header + content
+        sha1 = hashlib.sha1(full_object).hexdigest()
+
+        obj_dir = f".git/objects/{sha1[:2]}"
+        os.makedirs(obj_dir, exist_ok=True)
+
+        obj_path = f"{obj_dir}/{sha1[2:]}"
+        if not os.path.exists(obj_path):
+            with open(obj_path, "wb") as f:
+                f.write(zlib.compress(full_object))
+
+        # print(f"[{i+1}/{num_objects}] Stored {obj_type}: {sha1}")
+        
+        
+        
 if __name__ == "__main__":
     main()
