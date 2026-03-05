@@ -86,7 +86,7 @@ def main():
         url = sys.argv[2]
         working_dir = sys.argv[3]
         repo = request.urlopen(url)
-        print(repo)
+        print(repo.read())
         #this is cheating
     else:
         raise RuntimeError(f"Unknown command #{command}")
